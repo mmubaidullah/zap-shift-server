@@ -5,7 +5,7 @@ require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 const crypto = require("crypto");
 
 const admin = require("firebase-admin");
@@ -69,6 +69,11 @@ async function run() {
     const ridersCollection = db.collection("riders");
 
     // user related apis
+    app.get("/users", verifyFVToken, async (req, res) => {
+      const cursor = userCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.post("/users", async (req, res) => {
       const user = req.body;
       user.role = "user";
@@ -81,6 +86,19 @@ async function run() {
       }
 
       const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const roleInfo = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: roleInfo.role,
+        },
+      };
+      const result = await userCollection.updateOne(query, updatedDoc);
       res.send(result);
     });
 
@@ -124,6 +142,7 @@ async function run() {
       const result = await parcelsCollection.deleteOne(query);
       res.send(result);
     });
+
     //******************************************/
     //payment related api
     app.post("/payment-checkout-session", async (req, res) => {
@@ -246,7 +265,7 @@ async function run() {
       res.send({ success: false });
     });
 
-    // payment related apis
+    // payment get
     app.get("/payments", verifyFVToken, async (req, res) => {
       const email = req.query.email;
       const query = {};
